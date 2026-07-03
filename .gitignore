@@ -1,0 +1,23 @@
+
+# Byte Distribution / Build Artifacts
+target/
+*.jar
+*.war
+*.ear
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# IDE - VS Code
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# System Files
+*.swp
+*~
