@@ -1,9 +1,12 @@
 package tech.thorley;
 
 
+import java.lang.IllegalArgumentException;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.BeforeEach;
 
 /* 
@@ -28,7 +31,30 @@ public class ArithmiticTest {
      */
     @Test
     public void testPCInitializedto0x200() {
-        assertEquals(0x0200, chipVM.getPC());
+        assertEquals(0x0200, chipVM.getPC(), "Expected 0x0200 the start of program space");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 15}) // You can just pick a few key indices
+    public void testSpecificRegistersInitializedToZero(int n) {
+        assertEquals(0, chipVM.getV(n));
+    }
+
+    @Test
+    public void testDataRegisterOutofBoundsThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> chipVM.getV(88), "Register index out of bounds: 88");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, 10",   // Test Reg 0 with value 10
+        "4, 126",  // Test Reg 4 with value 126
+        "1, 255",  // Test Reg 1 with value 255
+        "15, 1"    // Test Reg 15 with value 0
+    })
+    public void addValueToRegister(int index, int value) {
+        chipVM.setV(index, (byte)value);
+        assertEquals(value, chipVM.getV(index));
     }
 
 }
