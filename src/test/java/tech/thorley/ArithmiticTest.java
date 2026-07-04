@@ -35,7 +35,7 @@ public class ArithmiticTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 15}) // You can just pick a few key indices
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 15}) // just pick a few indices
     public void testSpecificRegistersInitializedToZero(int n) {
         assertEquals(0, chipVM.getV(n), "Expected register to return data " + n);
     }
@@ -74,19 +74,67 @@ public class ArithmiticTest {
 
     @ParameterizedTest
     @CsvSource({
-        "0, 1, 1, 128",   // VX=0, Value=0x01 (0000 0001), VY=1, Value=0x80 (1000 0000)
-        "4, 170, 5, 85",  // VX=4, Value=0xAA (1010 1010), VY=5, Value=0x55 (0101 0101)
-        "1, 255, 2, 1"   // VX=1, Value=0xFF (1111 1111), VY=2, Value=0x01 (0000 0001)       
+        "0, 1, 1, 128, 129",   // VX=0, Value=0x01 (0000 0001), VY=1, Value=0x80 (1000 0000)
+        "4, 170, 5, 85, 255",  // VX=4, Value=0xAA (1010 1010), VY=5, Value=0x55 (0101 0101)
+        "1, 255, 2, 1, 255"   // VX=1, Value=0xFF (1111 1111), VY=2, Value=0x01 (0000 0001)       
     })
-    public void bitwiseORvalueAtVxVy(int vx, int xValue, int vy, int yValue) { 
+    public void bitwiseORvalueAtVxVy(int vx, int xValue, int vy, int yValue, int expected) { 
         // 8XY1: Bitwise OR
         // VX is set to the bitwise/binary logical disjunction (OR) of VX and VY. VY is not affected.
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
         chipVM.execute8XY1(vx, vy);
-        assertEquals(yValue | xValue, chipVM.getV(vx), 
-            "Vx Value: " + vx + " should be bitwise OR to Vy value: " + vy + " resulting in: " + (yValue | xValue));
+        assertEquals(expected, chipVM.getV(vx), 
+            "Vx Value: " + vx + " should be bitwise OR to Vy value: " + vy + " resulting in: " + expected);
+                    // Assert VY was NOT mutated
+        assertEquals(yValue, chipVM.getV(vy), 
+            "Vy should not be affected by the AND operation");
 
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, 0,   1, 85,  0",  // 0x00 & 0x55 = 0x00
+        "4, 255, 5, 85,  85", // 0xFF & 0x55 = 0x55
+        "1, 240, 2, 85,  80"  // 0xF0 & 0x55 = 0x50 (80 in decimal) masks bottom nybble 
+    })
+    public void bitwiseANDvalueAtVxVy(int vx, int xValue, int vy, int yValue, int expected) { 
+        //  8XY2: Binary AND
+        //  VX is set to the bitwise/binary logical conjunction (AND) of VX and VY. VY is not affected.
+        chipVM.setV(vy, yValue);
+        chipVM.setV(vx, xValue);
+        chipVM.execute8XY2(vx, vy);
+        
+        // Assert VX changed correctly
+        assertEquals(expected, chipVM.getV(vx), 
+            "Vx should be set to the bitwise AND of initial Vx and Vy");
+            
+        // Assert VY was NOT mutated
+        assertEquals(yValue, chipVM.getV(vy), 
+            "Vy should not be affected by the AND operation");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, 255, 1, 255,  0",   // 0xFF XOR 0xFF = 0x00
+        "4, 170, 5, 0,  170",   // 0xAA ^ 0x00 = 0xAA Zero masking
+        "1, 170, 2, 85, 255",   // 0xAA ^ 0x55 = 0xFF every bit is different so every bit should flip to 1
+        "2, 60 , 3, 24, 36"     // 0x3C ^ 0x18 = 0x24
+    })
+    public void bitwiseXORvalueAtVxVy(int vx, int xValue, int vy, int yValue, int expected) { 
+        // 8XY3: Logical XOR
+        // VX is set to the bitwise/binary exclusive OR (XOR) of VX and VY. VY is not affected.
+        chipVM.setV(vy, yValue);
+        chipVM.setV(vx, xValue);
+        chipVM.execute8XY3(vx, vy);
+        
+        // Assert VX changed correctly
+        assertEquals(expected, chipVM.getV(vx), 
+            "Vx should be set to the bitwise XOR of initial Vx and Vy");
+            
+        // Assert VY was NOT mutated
+        assertEquals(yValue, chipVM.getV(vy), 
+            "Vy should not be affected by the XOR operation");
     }
 
     /*
@@ -96,10 +144,10 @@ public class ArithmiticTest {
     done    8XY1: Bitwise OR
         VX is set to the bitwise/binary logical disjunction (OR) of VX and VY. VY is not affected.
         
-        8XY2: Binary AND
+    done    8XY2: Binary AND
         VX is set to the bitwise/binary logical conjunction (AND) of VX and VY. VY is not affected.
         
-        8XY3: Logical XOR
+    done    8XY3: Logical XOR
         VX is set to the bitwise/binary exclusive OR (XOR) of VX and VY. VY is not affected.
         
         8XY4: Add

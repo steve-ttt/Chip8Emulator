@@ -56,4 +56,17 @@ public class Chip8 {
         this.setV(vx, returnValue);
     }
 
+    public void execute8XY2(int vx, int vy) {
+        int xValue = this.getV(vx);
+        int yValue = this.getV(vy);
+        int returnValue = (xValue & yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
+        this.setV(vx, returnValue);
+    }
+
+    public void execute8XY3(int vx, int vy) {
+        int xValue = this.getV(vx);
+        int yValue = this.getV(vy);
+        int returnValue = (xValue ^ yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
+        this.setV(vx, returnValue);
+    }
 }
