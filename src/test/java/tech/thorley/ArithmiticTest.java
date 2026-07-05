@@ -26,11 +26,9 @@ public class ArithmiticTest {
     }
 
    
-    /**
-     * This chip 8 program counter starts at 0x200. 
-     */
     @Test
     public void testPCInitializedto0x200() {
+        // the chip-8 program counter starts at 0x200.
         assertEquals(0x0200, chipVM.getPC(), "Expected 0x0200 the start of program space");
     }
 
@@ -137,28 +135,80 @@ public class ArithmiticTest {
             "Vy should not be affected by the XOR operation");
     }
 
-    /*
-    done    8XY0: Set
-        VX is set to the value of VY.
-        
-    done    8XY1: Bitwise OR
-        VX is set to the bitwise/binary logical disjunction (OR) of VX and VY. VY is not affected.
-        
-    done    8XY2: Binary AND
-        VX is set to the bitwise/binary logical conjunction (AND) of VX and VY. VY is not affected.
-        
-    done    8XY3: Logical XOR
-        VX is set to the bitwise/binary exclusive OR (XOR) of VX and VY. VY is not affected.
-        
-        8XY4: Add
+    @ParameterizedTest
+    @CsvSource({
+        "0, 255, 1, 1,  0, 1",   // add 255 and 1 resutl 0 carry 1
+        "4, 128, 5, 0,  128, 0",   // add 128 and 0 result 128 no carry 
+        "1, 0, 2, 0, 0, 0"   // add 0 and 0 result 0 no carry
+    })
+    public void addvalueAtVxVy(int vx, int xValue, int vy, int yValue, int expected, int carry) { 
+        /* 8XY4: Add
         VX is set to the value of VX plus the value of VY. VY is not affected.
-        Unlike 7XNN, this addition will affect the carry flag. If the result is larger than 255 (and thus overflows the 8-bit register VX), the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0.
+        Unlike 7XNN, this addition will affect the carry flag. If the result is larger than 255 (and thus overflows the 8-bit register VX), 
+        the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0. */
+        chipVM.setV(vy, yValue);
+        chipVM.setV(vx, xValue);
+        chipVM.execute8XY4(vx, vy);
         
+        // Assert VX changed correctly
+        assertEquals(expected, chipVM.getV(vx), 
+            "Vx should be set to addition of Vx and Vy");
+        assertEquals(carry, chipVM.getV(0x0F), 
+                    "The carry bit should be set to: " + carry + " for the addition of " + xValue + " and " + yValue);    
+        // Assert VY was NOT mutated
+        assertEquals(yValue, chipVM.getV(vy), 
+            "Vy should not be affected by the addition operation");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, 0, 1, 1,  255, 0",   // 0 - 1 = 255 (VF=0)
+        "4, 128, 5, 0, 128, 1",  // 128 - 0 = 128 (VF=1)
+        "1, 69, 2, 42, 27, 1"    // 69 - 42 = 27 (VF=1)
+    })
+    public void subtractxy5(int vx, int xValue, int vy, int yValue, int expected, int borrow) {
+        runSubtractionTest(vx, xValue, vy, yValue, expected, borrow, true);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, 0, 1, 1,  1, 1",     // 1 - 0 = 1 (VF=1)
+        "4, 128, 5, 0, 128, 0",  // 0 - 128 = 128 (VF=0)
+        "1, 69, 2, 42, 229, 0"    // 42 - 69 = 229 (VF=0)
+    })
+    public void subtractxy7(int vx, int xValue, int vy, int yValue, int expected, int borrow) {
+        runSubtractionTest(vx, xValue, vy, yValue, expected, borrow, false);
+    }
+
+    // Private helper to avoid code duplication
+    private void runSubtractionTest(int vx, int xValue, int vy, int yValue, int expected, int borrow, boolean isXY5) {
+        /*         
         8XY5 and 8XY7: Subtract
         These both subtract the value in one register from the other, and put the result in VX. In both cases, VY is not affected.
         8XY5 sets VX to the result of VX - VY.
         8XY7 sets VX to the result of VY - VX.
-        This subtraction will also affect the carry flag, but note that it’s opposite from what you might think. If the minuend (the first operand) is larger than or equal to the subtrahend (second operand), VF will be set to 1. If the subtrahend is larger, and we “underflow” the result, VF is set to 0. Another way of thinking of it is that VF is set to 1 before the subtraction, and then the subtraction either borrows from VF (setting it to 0) or not.
+        This subtraction will also affect the carry flag, but note that it’s opposite from what you might think. 
+        If the minuend (the first operand) is larger than or equal to the subtrahend (second operand), VF will be set to 1. 
+        If the subtrahend is larger, and we “underflow” the result, VF is set to 0. Another way of thinking of it is that VF 
+        is set to 1 before the subtraction, and then the subtraction either borrows from VF (setting it to 0) or not.
+         */
+        chipVM.setV(vy, yValue);
+        chipVM.setV(vx, xValue);
+        if (isXY5) {
+            chipVM.execute8XY5(vx, vy);
+        } else {
+            chipVM.execute8XY7(vy, vx);
+        }
+
+        assertEquals(expected, chipVM.getV(vx));
+        assertEquals(borrow, chipVM.getV(0xF),
+                    "The borrow bit should be set to: " + borrow + " for the subtrction of " + xValue + " - " + yValue);
+        assertEquals(yValue, chipVM.getV(vy), "Vy should not be affected by the subtraction operation");
+    }
+
+    /*
+        
+
         
         8XY6 and 8XYE: Shift
     */

@@ -52,21 +52,64 @@ public class Chip8 {
     public void execute8XY1(int vx, int vy) {
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
-        int returnValue = (xValue | yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
-        this.setV(vx, returnValue);
+        int result = (xValue | yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
+        this.setV(vx, result);
     }
 
     public void execute8XY2(int vx, int vy) {
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
-        int returnValue = (xValue & yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
-        this.setV(vx, returnValue);
+        int result = (xValue & yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
+        this.setV(vx, result);
     }
 
     public void execute8XY3(int vx, int vy) {
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
-        int returnValue = (xValue ^ yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
-        this.setV(vx, returnValue);
+        int result = (xValue ^ yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
+        this.setV(vx, result);
     }
+
+    public void execute8XY4(int vx, int vy) {
+        int xValue = this.getV(vx);
+        int yValue = this.getV(vy);
+        int result = xValue + yValue; // add them together
+        if(result > 255) {
+            this.setV(0xF, 1); // set the carry bit
+        } else {
+            this.setV(0xF, 0); // explicityly set the carry to 0 just in case
+        }
+        result = result & 0xFF;
+        this.setV(vx, result);
+    }
+
+    public void execute8XY5(int vx, int vy) {
+        int xValue = this.getV(vx);
+        int yValue = this.getV(vy);
+        int borrow = 1;
+        int result = xValue - yValue;
+        if ( yValue > xValue ) {
+            borrow = 0;
+            result = 256 - yValue;
+        }
+        result = result & 0xFF;
+        this.setV(0xF, borrow); // set borrow
+        this.setV(vx, result);
+    }
+
+    public void execute8XY7(int vy, int vx) {
+        int xValue = this.getV(vx);
+        int yValue = this.getV(vy);
+        int borrow = 1;
+        int result =  yValue - xValue;
+        if ( result < 0 ) {
+            borrow = 0;
+            result = 256 + result;
+        }
+        result = result & 0xFF;
+        this.setV(0xF, borrow); // set borrow
+        this.setV(vx, result);
+    }
+
 }
+
