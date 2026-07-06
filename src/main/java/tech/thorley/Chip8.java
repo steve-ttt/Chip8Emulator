@@ -111,5 +111,29 @@ public class Chip8 {
         this.setV(vx, result);
     }
 
+    public void execute8XY6(int vx, int vy) {
+        int yValue = this.getV(vy);
+        int carry = yValue & 1;
+        int result = yValue >> 1;
+        result = result & 0xFF;
+        this.setV(0xF, carry); // set carry
+        this.setV(vx, result);
+    }
+
+    public void execute8XYE(int vx, int vy) {
+        int yValue = this.getV(vy);
+        int carry = yValue  & 0x80;
+        if(carry == 0x80) {
+            carry = 1;
+        } else {
+            carry = 0;
+        }        
+        int result = yValue << 1;
+        result = result & 0xFF;
+        this.setV(0xF, carry); // set carry
+        this.setV(vx, result);
+
+    }
+
 }
 

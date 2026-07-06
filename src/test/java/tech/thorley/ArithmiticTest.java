@@ -1,13 +1,13 @@
 package tech.thorley;
 
 
-import java.lang.IllegalArgumentException;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.api.BeforeEach;
 
 /* 
    The first CHIP-8 interpreter (on the COSMAC VIP computer) was also located in RAM, from address 000 to 1FF. 
@@ -206,10 +206,35 @@ public class ArithmiticTest {
         assertEquals(yValue, chipVM.getV(vy), "Vy should not be affected by the subtraction operation");
     }
 
-    /*
-        
+    @ParameterizedTest
+    @CsvSource({
+        "0, 0, 1, 7,  3, 1",     // Vy=7 right shift answer to Vx (3) carry to (VF=1)
+        "4, 0, 5, 170, 85, 0"  // Vy = 0xAA = 170  result = 85(0x55)(VF=0)
+    })
+    public void rightShift(int vx, int xValue, int vy, int yValue, int expected, int carry) {
+        chipVM.setV(vy, yValue);
+        chipVM.setV(vx, xValue);
+        chipVM.execute8XY6(vx, vy);
+        assertEquals(expected, chipVM.getV(vx));
+        assertEquals(carry, chipVM.getV(0xF),
+                    "The carrt bit should be set to: " + carry + " for the rightshift of " + yValue);
+    }
+    
+    @ParameterizedTest
+    @CsvSource({
+        "0, 0, 1, 240, 224, 1",     // Vy=240(0b11110000) left shift answer to Vx (0b11100000) carry to (VF=1)
+        "4, 0, 5, 85, 170, 0"  // Vy = 85(0b01010101)  result =170(0b10101010(VF=0)
+    })
+    public void leftShift(int vx, int xValue, int vy, int yValue, int expected, int carry) {
+        chipVM.setV(vy, yValue);
+        chipVM.setV(vx, xValue);
+        chipVM.execute8XYE(vx, vy);
+        assertEquals(expected, chipVM.getV(vx));
+        assertEquals(carry, chipVM.getV(0xF),
+                    "The carry bit should be set to: " + carry + " for the leftshift of " + yValue);
+    }
 
-        
+    /*
         8XY6 and 8XYE: Shift
     */
 }
