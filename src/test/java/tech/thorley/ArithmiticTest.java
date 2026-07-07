@@ -50,7 +50,7 @@ public class ArithmiticTest {
         "1, 255",  // Test Reg 1 with value 255
         "15, 1"    // Test Reg 15 with value 0
     })
-    public void addValueToRegister(int index, int value) {
+    public void setValueToRegister(int index, int value) {
         chipVM.setV(index, (byte)value);
         assertEquals(value, chipVM.getV(index));
     }
@@ -158,6 +158,25 @@ public class ArithmiticTest {
         // Assert VY was NOT mutated
         assertEquals(yValue, chipVM.getV(vy), 
             "Vy should not be affected by the addition operation");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, 255, 5, 4",   // Vx(0) contains 255 add 5 result 4 no carry flag just wrap around
+        "4, 128, 5, 133",   // Vx(4) 128 add 5 result 133
+        "1, 0,   0, 0"   // Vx(1) 0 add 0 result 0
+    })
+    public void addValuetoVx(int vx, int xValue, int nn, int expected) { 
+        /* 7XNN (The "Add" Instruction)
+        This is an additive operation. It takes the existing value, performs a calculation, 
+        and then saves the result back into the same register.*/
+        chipVM.setV(vx, xValue);
+        chipVM.execute7XNN(vx, nn);
+        
+        // Assert VX changed correctly
+        assertEquals(expected, chipVM.getV(vx), 
+            "Vx should be set to addition of Vx and Vy");
+        
     }
 
     @ParameterizedTest

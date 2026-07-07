@@ -32,6 +32,15 @@ public class Chip8 {
 
     public short getPC() {return pc; }
     public void setPC(short value) { this.pc = value;}
+    public int stackPeek() {
+        return stack.peek();
+    }
+    public void stackPush(int value) {
+        stack.push(value);
+    }
+    public int stackPop() {
+        return stack.pop();
+    }
     
     public int getV(int index){ 
         if (index < 0 || index > 15) {
@@ -42,6 +51,52 @@ public class Chip8 {
     
     public void setV(int index, int value) {
         registers[index] = value & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
+    }
+
+    public void incrementPC() {
+        this.pc += 2;
+    }
+
+    public void execute1NNN(short address) {
+        this.pc = address;
+    }
+
+    public void execute2NNN(short address) {
+        this.stackPush(this.pc);
+        this.pc = address;
+    }
+
+    public void execute3XNN(int vx, int nn) {
+        int xValue = this.getV(vx);
+        if (xValue == nn) {
+            this.incrementPC();
+        }
+    }
+
+    public void execute4XNN(int vx, int nn) {
+        int xValue = this.getV(vx);
+        if (xValue != nn) {
+            this.incrementPC();
+        }
+    }
+
+    public void execute5XY0(int vx, int vy) {
+        int xValue = this.getV(vx);
+        int yValue = this.getV(vy);
+        if (xValue == yValue) {
+            this.incrementPC();
+        }
+    }
+
+    public void execute6XNN(int vx, int nn) {
+        this.setV(vx, nn);
+    }
+
+    public void execute7XNN(int vx, int nn) {
+        int xValue = this.getV(vx);
+        int result = xValue + nn;
+        result = result & 0xFF;
+        this.setV(vx, result);
     }
 
     public void execute8XY0(int vx, int vy) {
@@ -132,6 +187,16 @@ public class Chip8 {
         result = result & 0xFF;
         this.setV(0xF, carry); // set carry
         this.setV(vx, result);
+
+    }
+
+    public void execute9XY0(int vx, int vy) {
+        // 9XY0 	Skip the following instruction if the value of register VX is NOT equal to the value of register VY
+        int xValue = this.getV(vx);
+        int yValue = this.getV(vy);
+        if (xValue != yValue) {
+            this.incrementPC();
+        }
 
     }
 
