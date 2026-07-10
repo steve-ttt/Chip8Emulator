@@ -63,5 +63,62 @@ public class Chip8FetchDecodeExecuteTest {
 
     }
 
-    
+    @Test
+    public void fetchDecode_4XNN_conditionalJump() {
+        // 4XNN 	Skip the following instruction if the value of register VX is not equal to NN
+        loadInstructionAt(0x200, 0x41, 0xAA);
+        chip8.setV(1, 0xAA);
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x202, chip8.getPC());
+
+        chip8.setPC(0x200);
+        loadInstructionAt(0x200, 0x41, 0xAA);
+        chip8.setV(1, 0xBB);
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x204, chip8.getPC());
+
+    }
+
+    @Test
+    public void fetchDecode_5XY0_conditionalJump() {
+        // 5XY0 	Skip the following instruction if the value of register VX is equal to the value of register VY
+        loadInstructionAt(0x200, 0x50, 0x40);
+        chip8.setV(0, 0xAA);
+        chip8.setV(4, 0xAA);
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x204, chip8.getPC());
+
+        chip8.setPC(0x200);
+        loadInstructionAt(0x200, 0x50, 0x40);
+        chip8.setV(0, 0xAA);
+        chip8.setV(4, 0xBB);
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x202, chip8.getPC());
+
+    }
+
+    @Test
+    public void fetchDecode_6XNN_storeValue() {
+        // 6XNN 	Store number NN in register VX
+        loadInstructionAt(0x200, 0x61, 0xAA);
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0xAA, chip8.getV(1));
+    }
+
+    @Test
+    public void fetchDecode_7XNN_add() {
+        // 7XNN 	Add the value NN to register VX
+        loadInstructionAt(0x200, 0x70, 0x05);
+        chip8.setV(0, 10);
+        chip8.fetchDecodeExecute();
+
+        assertEquals(15, chip8.getV(0));
+
+
+    }
 }

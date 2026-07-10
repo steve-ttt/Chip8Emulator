@@ -42,6 +42,10 @@ public class Chip8 {
         dispatchTable.put(0x1, (opcode) -> execute1NNN(opcode));
         dispatchTable.put(0x2, (opcode) -> execute2NNN(opcode));
         dispatchTable.put(0x3, (opcode) -> execute3XNN(opcode));
+        dispatchTable.put(0x4, (opcode) -> execute4XNN(opcode));
+        dispatchTable.put(0x5, (opcode) -> execute5XY0(opcode));
+        dispatchTable.put(0x6, (opcode) -> execute6XNN(opcode));
+        dispatchTable.put(0x7, (opcode) -> execute7XNN(opcode));
         dispatchTable.put(0x8, (opcode) -> handleEightSeries(opcode)); 
         // ...
     }
@@ -159,26 +163,41 @@ public class Chip8 {
         }
     }
 
-    public void execute4XNN(int vx, int nn) {
+    public void execute4XNN(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int nn = opcode & 0x00FF;   
         int xValue = this.getV(vx);
         if (xValue != nn) {
             this.incrementPC();
-        }
+            this.incrementPC();
+        } else {
+            this.incrementPC();            
+        }        
     }
 
-    public void execute5XY0(int vx, int vy) {
+    public void execute5XY0(int opcode) {
+        // 5XY0 	Skip the following instruction if the value of register VX is equal to the value of register VY
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
         if (xValue == yValue) {
             this.incrementPC();
+            this.incrementPC();
+        } else {
+            this.incrementPC();
         }
     }
 
-    public void execute6XNN(int vx, int nn) {
+    public void execute6XNN(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int nn = opcode & 0x00FF;
         this.setV(vx, nn);
     }
 
-    public void execute7XNN(int vx, int nn) {
+    public void execute7XNN(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int nn = opcode & 0x00FF;
         int xValue = this.getV(vx);
         int result = xValue + nn;
         result = result & 0xFF;

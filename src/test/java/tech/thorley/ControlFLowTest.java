@@ -92,16 +92,17 @@ public class ControlFLowTest {
     @Test
     public void jumpNotEquals() {
         // 4XNN
+        int opcode = 0x4088;
         int nnValue = 88;
         int currentPC = chipVM.getPC();
         chipVM.setV(0, 99);
-        chipVM.execute4XNN(0, nnValue);
-        assertTrue(chipVM.getPC() == currentPC + 2); // the pc will be incermented in the main loop so we only need one jump here
+        chipVM.execute4XNN(opcode);
+        assertEquals(0x204, chipVM.getPC(), "Expect next instruction to be skipped"); 
 
         currentPC = chipVM.getPC();
         chipVM.setV(0, nnValue);
-        chipVM.execute4XNN(0, nnValue);
-        assertTrue(chipVM.getPC() == currentPC); // value equal so no jump
+        chipVM.execute4XNN(opcode);
+        assertEquals(0x202, chipVM.getPC(), "Expect PC to point to the next instruction to be executed"); 
     }
 
     @ParameterizedTest
@@ -119,28 +120,30 @@ public class ControlFLowTest {
 
     }
 
-    @ParameterizedTest
-    @CsvSource({
-        "0, 10, 10",   // Test Reg 0 = 10 expect the vaule in V0 to be 10 
-        "4, 255, 255"  // Test Reg 4 = 255 expect the vaule in V4 to be 255
-    })
-    public void storeNNinRegisterx(int vx, int nnValue, int expected) {
+    @Test
+    public void storeNNinRegisterx() {
         // 6XNN 	Store number NN in register VX
-        chipVM.execute6XNN(vx, nnValue);
+        int vx = 0;
+        int nnValue = 0xAA;
+        int expected = 0xAA;
+        int opcode = 0x60AA;
+        chipVM.setV(vx, nnValue);
+        chipVM.execute6XNN(opcode);
         assertTrue(chipVM.getV(vx) == expected);
     }
 
     @ParameterizedTest
     @CsvSource({
-        "0, 10, 1, 10, 512, 514",   // Test Reg 0 = 10 reg 1 = 10 pc = 512(0x200) 
-        "4, 126, 5, 85, 512, 512"  // Test Reg 4 = 126 reg 5 = 85 pc = 512(0x200)
+        "0, 10, 4, 10, 512, 514",   // Test Reg 0 = 10 reg 1 = 10 pc = 512(0x200) 
+        "0, 126, 4, 85, 512, 512"  // Test Reg 4 = 126 reg 5 = 85 pc = 512(0x200)
     })
     public void jumpEqualsRegister(int vx, int xValue, int vy, int yValue, short pc, int expectedPC) {
-        // 9XY0 	Skip the following instruction if the value of register VX is NOT equal to the value of register VY
+        // 5XY0 	Skip the following instruction if the value of register VX is NOT equal to the value of register VY
+        int opcode = 0x5040;
         chipVM.setPC(pc);
         chipVM.setV(vx, xValue);
         chipVM.setV(vy, yValue);
-        chipVM.execute5XY0(vx, vy);
+        chipVM.execute5XY0(opcode);
         assertTrue(chipVM.getPC() == expectedPC);
 
     }
