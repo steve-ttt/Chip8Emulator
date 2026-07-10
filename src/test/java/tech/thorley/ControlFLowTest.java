@@ -34,6 +34,26 @@ public class ControlFLowTest {
     }
 
     @Test
+    public void systemCall() {
+        // 0NNN 	Jump to address NNN
+        short address = 0x0ABC;
+        chipVM.execute0NNN(address);
+        assertTrue(chipVM.getPC() == address);
+        assertTrue(chipVM.stackEmpty());
+    }
+
+    @Test 
+    public void returnFromSubroutine() {
+        // 00EE 	Return from a subroutine
+        int currentPC = chipVM.getPC();
+        chipVM.stackPush(currentPC);
+        chipVM.setPC((short)0x1234);
+        chipVM.execute00EE();
+        assertTrue(chipVM.getPC() == currentPC);
+    }
+
+
+    @Test
     public void jumpToAddress() {
         // 1NNN 	Jump to address NNN
         short address = 0x1234;
@@ -55,16 +75,18 @@ public class ControlFLowTest {
     @Test
     public void jumpEquals() {
         // 3XNN
-        int nnValue = 88;
-        int currentPC = chipVM.getPC();
-        chipVM.setV(0, nnValue);
-        chipVM.execute3XNN(0, nnValue);
-        assertTrue(chipVM.getPC() == currentPC + 2); // the pc will be incermented in the main loop so we only need one jump here
+        int opcode = 0x3088;
+        int nnValue = 0x88;
         
-        currentPC = chipVM.getPC();
+        chipVM.setV(0, nnValue);
+        chipVM.execute3XNN(opcode);
+        assertEquals(0x204, chipVM.getPC(), "Expect next instruction to be skipped"); 
+        
+        chipVM.setPC(0x200);
         chipVM.setV(0, 99);
-        chipVM.execute3XNN(0, nnValue);
-        assertTrue(chipVM.getPC() == currentPC); // value not equal so no jump
+        chipVM.execute3XNN(opcode);
+        assertEquals(0x202, chipVM.getPC(), "Expect PC to point to the next instruction to be executed"); 
+        // value not equal so no jump
     }
 
     @Test
