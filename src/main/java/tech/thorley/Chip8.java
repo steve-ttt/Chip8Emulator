@@ -20,6 +20,8 @@ public class Chip8 {
     
     // 8-bit array for raw storage
     private int[] memory = new int[4096];
+    private boolean[][] display = new boolean[64][32]; // chip-8 has a display buffer unlike ZX Spectrum or Gameboy that just uses main memory
+    
     
     // Modern stack
     private ArrayDeque<Integer> stack = new ArrayDeque<>();  
@@ -47,7 +49,7 @@ public class Chip8 {
         dispatchTable.put(0x6, (opcode) -> execute6XNN(opcode));
         dispatchTable.put(0x7, (opcode) -> execute7XNN(opcode));
         dispatchTable.put(0x8, (opcode) -> handleEightSeries(opcode)); 
-        // ...
+        // ... todo
     }
 
     // --- 3. THE PUBLIC API (The Entry Point) ---
@@ -66,8 +68,14 @@ public class Chip8 {
     }
 
     private void handleZeroSeries(int opcode) {
-        int subType = (opcode & 0x00FF) >> 4;
-        // switch statemnt
+        int subType = opcode & 0x00FF;
+        if (subType == 0xEE) {
+            execute00EE();
+        } if (subType == 0xE0) {
+            execute00E0();
+        }  else {
+            execute0NNN(opcode);
+        }
     }
 
     public void fetchDecodeExecute() {
@@ -123,7 +131,22 @@ public class Chip8 {
         this.pc += 2;
     }
 
+    public void setDisplayBit(int x, int y, boolean value) {
+        display[x][y] = value;
+    }
 
+    public boolean getDisplayBit(int x, int y) {
+        return display[x][y];
+    }
+
+    public void clearDisplay() {
+        for (boolean[] display1 : display) {
+            for (int j = 0; j < display1.length; j++) {
+                display1[j] = false;
+            }
+        }
+    }
+    
 
     /////////////////////////////////////////////
     /// OP COdes 
@@ -133,6 +156,10 @@ public class Chip8 {
     public void execute0NNN(int opcode) {
         int address = opcode & 0x0FFF;
         this.pc = address;
+    }
+
+    public void execute00E0() {
+        this.clearDisplay();
     }
 
     public void execute00EE() {

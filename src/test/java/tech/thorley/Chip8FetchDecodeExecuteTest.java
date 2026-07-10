@@ -118,7 +118,37 @@ public class Chip8FetchDecodeExecuteTest {
         chip8.fetchDecodeExecute();
 
         assertEquals(15, chip8.getV(0));
+    }
 
+    @Test
+    public void fetchDecode_00EE_returnFromSubroutine() {
+        loadInstructionAt(0x200, 0x00, 0xEE);
+        chip8.stackPush(0x202);
+        chip8.fetchDecodeExecute();
 
+        assertEquals(0x202, chip8.getPC());
+        assertTrue(chip8.stackEmpty());
+    }
+
+    @Test
+    public void clearScreen_00E0() {
+        // 00E0 	Clear the display
+        loadInstructionAt(0x200, 0x00, 0xE0);
+        
+        // fill the screen 
+        for (int x = 0; x < 64; x++) {
+            for (int y = 0; y < 32; y++) {
+                chip8.setDisplayBit(x, y, true);
+            }
+        }
+
+        chip8.fetchDecodeExecute();
+
+        // check all bits in the screen buffer are false
+        for (int x = 0; x < 64; x++) {
+            for (int y = 0; y < 32; y++) {
+                assertFalse(chip8.getDisplayBit(x, y));
+            }
+        }
     }
 }
