@@ -65,11 +65,12 @@ public class ControlFLowTest {
     @Test
     public void executeSubroutine() {
         // 2NNN 	Execute subroutine starting at address NNN
-        short address = 0x1234;
+        int opcode = 0x2123;
+        int address = 0x123;
         int currentPC = chipVM.getPC();
-        chipVM.execute2NNN(address);
+        chipVM.execute2NNN(opcode);
         assertTrue(chipVM.getPC() == address);
-        assertEquals(currentPC, chipVM.stackPeek());
+        assertEquals(currentPC + 2, chipVM.stackPeek());
     }
 
     @Test
@@ -134,17 +135,17 @@ public class ControlFLowTest {
 
     @ParameterizedTest
     @CsvSource({
-        "0, 10, 4, 10, 512, 514",   // Test Reg 0 = 10 reg 1 = 10 pc = 512(0x200) 
-        "0, 126, 4, 85, 512, 512"  // Test Reg 4 = 126 reg 5 = 85 pc = 512(0x200)
+        "0, 10, 4, 10, 512, 516",   // Test Reg 0 = 10 reg 1 = 10 pc = 512(0x200) 
+        "0, 126, 4, 85, 512, 514"  // Test Reg 4 = 126 reg 5 = 85 pc = 512(0x200)
     })
     public void jumpEqualsRegister(int vx, int xValue, int vy, int yValue, short pc, int expectedPC) {
-        // 5XY0 	Skip the following instruction if the value of register VX is NOT equal to the value of register VY
+        // 5XY0 	Skip the following instruction if the value of register VX is  equal to the value of register VY
         int opcode = 0x5040;
         chipVM.setPC(pc);
         chipVM.setV(vx, xValue);
         chipVM.setV(vy, yValue);
         chipVM.execute5XY0(opcode);
-        assertTrue(chipVM.getPC() == expectedPC);
+        assertEquals(expectedPC, chipVM.getPC(), "Expect next instruction to be skipped");
 
     }
    

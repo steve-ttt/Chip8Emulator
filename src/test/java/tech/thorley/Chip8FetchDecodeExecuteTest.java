@@ -163,4 +163,132 @@ public class Chip8FetchDecodeExecuteTest {
         assertEquals(0xAA, chip8.getV(0));
      
     }
+
+    @Test
+    public void fetchDecode_8XY1_BitwiseOR() {
+        // 8XY1: Bitwise OR
+        // VX is set to the bitwise/binary logical disjunction (OR) of VX and VY. VY is not affected.
+        loadInstructionAt(0x200, 0x80, 0x11);
+        chip8.setV(0, 0x01);
+        chip8.setV(1, 0x80);
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x81, chip8.getV(0));
+        assertEquals(0x80, chip8.getV(1));
+
+    }
+
+    @Test
+    public void fetchDecode_8XY2_BitwiseAND() {
+        // 8XY2: Binary AND
+        // VX is set to the bitwise/binary logical conjunction (AND) of VX and VY. VY is not affected.
+        loadInstructionAt(0x200, 0x80, 0x12);
+        chip8.setV(0, 0xF0);
+        chip8.setV(1, 0x88);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x80, chip8.getV(0));
+        assertEquals(0x88, chip8.getV(1));
+
+    }
+
+    @Test
+    public void fetchDecode_8XY3_BitwiseXOR() {
+        // 8XY3: Logical XOR
+        // VX is set to the bitwise/binary exclusive OR (XOR) of VX and VY. VY is not affected.
+        loadInstructionAt(0x200, 0x80, 0x13);
+        chip8.setV(0, 0xF0);
+        chip8.setV(1, 0x88);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x78, chip8.getV(0));
+        assertEquals(0x88, chip8.getV(1));
+
+    }
+
+    @Test
+    public void fetchDecode_8XY4_Add() {    
+        // 8XY4: Add
+        // VX is set to the value of VX plus the value of VY. VY is not affected.
+        // Unlike 7XNN, this addition will affect the carry flag. If the result is larger than 255
+        // (and thus overflows the 8-bit register VX), the flag register VF is set to 1
+        loadInstructionAt(0x200, 0x80, 0x14);
+        chip8.setV(0, 0xFF);
+        chip8.setV(1, 0x01);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x00, chip8.getV(0));
+        assertEquals(0x01, chip8.getV(1));
+        assertEquals(1, chip8.getV(0xF));
+
+    }
+
+    @Test 
+    public void fetchDecode_8XY5_Subtract() {
+        // 8XY5: Subtract
+        // VX is set to VX minus VY. VY is not affected 
+        // Set VF to 01 if a borrow does not occur
+        loadInstructionAt(0x200, 0x80, 0x15);
+        chip8.setV(0, 0xFF);
+        chip8.setV(1, 0x01);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0xFE, chip8.getV(0));
+        assertEquals(0x01, chip8.getV(1));
+        assertEquals(1, chip8.getV(0xF));
+
+    }
+
+    @Test
+    public void fetchDecode_8XY6_ShiftRight() {
+        // 8XY6: Shift Right    
+        loadInstructionAt(0x200, 0x80, 0x16);
+        chip8.setV(1, 0x80);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x40, chip8.getV(0));
+        assertEquals(0, chip8.getV(0xF));
+
+    }
+
+    @Test
+    public void fetchDecode_8XY7_Subtract() {
+        // 8XY7: Subtract
+        // VX is set to VY minus VX. VY is not affected 
+        // Set VF to 01 if a borrow does not occur
+        loadInstructionAt(0x200, 0x80, 0x17);
+        chip8.setV(1, 0xFF);
+        chip8.setV(0, 0x01);
+
+        chip8.fetchDecodeExecute(); 
+
+        assertEquals(0xFE, chip8.getV(0));
+        assertEquals(0xFF, chip8.getV(1));
+        assertEquals(1, chip8.getV(0xF));
+
+    }
+
+
+    @Test
+    public void fetchDecode_8XYE_ShiftLeft() {
+        // 8XYE: Shift Left
+        loadInstructionAt(0x200, 0x80, 0x1E);
+        chip8.setV(1, 0xF0);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0xE0, chip8.getV(0));
+        assertEquals(1, chip8.getV(0xF));
+
+    }
+
+
+
+
+
 }

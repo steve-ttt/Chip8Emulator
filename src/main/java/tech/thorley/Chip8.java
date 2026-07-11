@@ -56,14 +56,14 @@ public class Chip8 {
 
     private void setupEightSeriesDispatchTable() {
         eightSeriesDispatchTable.put(0x0, (opcode) -> execute8XY0(opcode));
-        /* eightSeriesDispatchTable.put(0x1, (opcode) -> execute8XY1(opcode));
+        eightSeriesDispatchTable.put(0x1, (opcode) -> execute8XY1(opcode));
         eightSeriesDispatchTable.put(0x2, (opcode) -> execute8XY2(opcode));
         eightSeriesDispatchTable.put(0x3, (opcode) -> execute8XY3(opcode));
         eightSeriesDispatchTable.put(0x4, (opcode) -> execute8XY4(opcode));
         eightSeriesDispatchTable.put(0x5, (opcode) -> execute8XY5(opcode));
         eightSeriesDispatchTable.put(0x6, (opcode) -> execute8XY6(opcode));
         eightSeriesDispatchTable.put(0x7, (opcode) -> execute8XY7(opcode));
-        eightSeriesDispatchTable.put(0xE, (opcode) -> execute8XYE(opcode)); */
+        eightSeriesDispatchTable.put(0xE, (opcode) -> execute8XYE(opcode)); 
     }
 
     // --- 3. THE PUBLIC API (The Entry Point) ---
@@ -86,12 +86,16 @@ public class Chip8 {
 
     private void handleZeroSeries(int opcode) {
         int subType = opcode & 0x00FF;
-        if (subType == 0xEE) {
-            execute00EE();
-        } if (subType == 0xE0) {
-            execute00E0();
-        }  else {
-            execute0NNN(opcode);
+        switch (subType) {
+            case 0xEE:
+                execute00EE();
+                break;
+            case 0xE0:
+                execute00E0();
+                break;
+            default:
+                execute0NNN(opcode);
+                break;
         }
     }
 
@@ -255,28 +259,36 @@ public class Chip8 {
         this.setV(vx, value);
     }
 
-    public void execute8XY1(int vx, int vy) {
+    public void execute8XY1(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
         int result = (xValue | yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
         this.setV(vx, result);
     }
 
-    public void execute8XY2(int vx, int vy) {
+    public void execute8XY2(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
         int result = (xValue & yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
         this.setV(vx, result);
     }
 
-    public void execute8XY3(int vx, int vy) {
+    public void execute8XY3(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
         int result = (xValue ^ yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
         this.setV(vx, result);
     }
 
-    public void execute8XY4(int vx, int vy) {
+    public void execute8XY4(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
         int result = xValue + yValue; // add them together
@@ -289,7 +301,9 @@ public class Chip8 {
         this.setV(vx, result);
     }
 
-    public void execute8XY5(int vx, int vy) {
+    public void execute8XY5(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
         int borrow = 1;
@@ -303,7 +317,20 @@ public class Chip8 {
         this.setV(vx, result);
     }
 
-    public void execute8XY7(int vy, int vx) {
+    public void execute8XY6(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
+        int yValue = this.getV(vy);
+        int carry = yValue & 1;
+        int result = yValue >> 1;
+        result = result & 0xFF;
+        this.setV(0xF, carry); // set carry
+        this.setV(vx, result);
+    }
+
+    public void execute8XY7(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
         int borrow = 1;
@@ -317,16 +344,9 @@ public class Chip8 {
         this.setV(vx, result);
     }
 
-    public void execute8XY6(int vx, int vy) {
-        int yValue = this.getV(vy);
-        int carry = yValue & 1;
-        int result = yValue >> 1;
-        result = result & 0xFF;
-        this.setV(0xF, carry); // set carry
-        this.setV(vx, result);
-    }
-
-    public void execute8XYE(int vx, int vy) {
+    public void execute8XYE(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int yValue = this.getV(vy);
         int carry = yValue  & 0x80;
         if(carry == 0x80) {

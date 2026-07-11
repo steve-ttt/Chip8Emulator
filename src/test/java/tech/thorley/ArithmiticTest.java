@@ -74,15 +74,17 @@ public class ArithmiticTest {
     @ParameterizedTest
     @CsvSource({
         "0, 1, 1, 128, 129",   // VX=0, Value=0x01 (0000 0001), VY=1, Value=0x80 (1000 0000)
-        "4, 170, 5, 85, 255",  // VX=4, Value=0xAA (1010 1010), VY=5, Value=0x55 (0101 0101)
-        "1, 255, 2, 1, 255"   // VX=1, Value=0xFF (1111 1111), VY=2, Value=0x01 (0000 0001)       
+        "0, 170, 1, 85, 255",  // VX=0, Value=0xAA (1010 1010), VY=1, Value=0x55 (0101 0101)
+        "0, 255, 1, 1, 255"   // VX=0, Value=0xFF (1111 1111), VY=1, Value=0x01 (0000 0001)       
     })
     public void bitwiseORvalueAtVxVy(int vx, int xValue, int vy, int yValue, int expected) { 
         // 8XY1: Bitwise OR
         // VX is set to the bitwise/binary logical disjunction (OR) of VX and VY. VY is not affected.
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4) + 1;
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
-        chipVM.execute8XY1(vx, vy);
+        chipVM.execute8XY1(opcode);
         assertEquals(expected, chipVM.getV(vx), 
             "Vx Value: " + vx + " should be bitwise OR to Vy value: " + vy + " resulting in: " + expected);
                     // Assert VY was NOT mutated
@@ -94,15 +96,17 @@ public class ArithmiticTest {
     @ParameterizedTest
     @CsvSource({
         "0, 0,   1, 85,  0",  // 0x00 & 0x55 = 0x00
-        "4, 255, 5, 85,  85", // 0xFF & 0x55 = 0x55
-        "1, 240, 2, 85,  80"  // 0xF0 & 0x55 = 0x50 (80 in decimal) masks bottom nybble 
+        "0, 255, 1, 85,  85", // 0xFF & 0x55 = 0x55
+        "0, 240, 1, 85,  80"  // 0xF0 & 0x55 = 0x50 (80 in decimal) masks bottom nybble 
     })
     public void bitwiseANDvalueAtVxVy(int vx, int xValue, int vy, int yValue, int expected) { 
         //  8XY2: Binary AND
         //  VX is set to the bitwise/binary logical conjunction (AND) of VX and VY. VY is not affected.
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4) + 2;
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
-        chipVM.execute8XY2(vx, vy);
+        chipVM.execute8XY2(opcode);
         
         // Assert VX changed correctly
         assertEquals(expected, chipVM.getV(vx), 
@@ -123,9 +127,11 @@ public class ArithmiticTest {
     public void bitwiseXORvalueAtVxVy(int vx, int xValue, int vy, int yValue, int expected) { 
         // 8XY3: Logical XOR
         // VX is set to the bitwise/binary exclusive OR (XOR) of VX and VY. VY is not affected.
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4) + 3;
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
-        chipVM.execute8XY3(vx, vy);
+        chipVM.execute8XY3(opcode);
         
         // Assert VX changed correctly
         assertEquals(expected, chipVM.getV(vx), 
@@ -147,9 +153,11 @@ public class ArithmiticTest {
         VX is set to the value of VX plus the value of VY. VY is not affected.
         Unlike 7XNN, this addition will affect the carry flag. If the result is larger than 255 (and thus overflows the 8-bit register VX), 
         the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0. */
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4) + 4;
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
-        chipVM.execute8XY4(vx, vy);
+        chipVM.execute8XY4(opcode);
         
         // Assert VX changed correctly
         assertEquals(expected, chipVM.getV(vx), 
@@ -214,12 +222,19 @@ public class ArithmiticTest {
         If the subtrahend is larger, and we “underflow” the result, VF is set to 0. Another way of thinking of it is that VF 
         is set to 1 before the subtraction, and then the subtraction either borrows from VF (setting it to 0) or not.
          */
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4);
+        if (isXY5) {
+            opcode = opcode + 5;
+        } else {
+            opcode = opcode + 7;
+        }
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
         if (isXY5) {
-            chipVM.execute8XY5(vx, vy);
+            chipVM.execute8XY5(opcode);
         } else {
-            chipVM.execute8XY7(vy, vx);
+            chipVM.execute8XY7(opcode);
         }
 
         assertEquals(expected, chipVM.getV(vx));
@@ -234,9 +249,11 @@ public class ArithmiticTest {
         "4, 0, 5, 170, 85, 0"  // Vy = 0xAA = 170  result = 85(0x55)(VF=0)
     })
     public void rightShift(int vx, int xValue, int vy, int yValue, int expected, int carry) {
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4) + 6;
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
-        chipVM.execute8XY6(vx, vy);
+        chipVM.execute8XY6(opcode);
         assertEquals(expected, chipVM.getV(vx));
         assertEquals(carry, chipVM.getV(0xF),
                     "The carrt bit should be set to: " + carry + " for the rightshift of " + yValue);
@@ -248,15 +265,15 @@ public class ArithmiticTest {
         "4, 0, 5, 85, 170, 0"  // Vy = 85(0b01010101)  result =170(0b10101010(VF=0)
     })
     public void leftShift(int vx, int xValue, int vy, int yValue, int expected, int carry) {
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4) + 0xE;
         chipVM.setV(vy, yValue);
         chipVM.setV(vx, xValue);
-        chipVM.execute8XYE(vx, vy);
+        chipVM.execute8XYE(opcode);
         assertEquals(expected, chipVM.getV(vx));
         assertEquals(carry, chipVM.getV(0xF),
                     "The carry bit should be set to: " + carry + " for the leftshift of " + yValue);
     }
 
-    /*
-        8XY6 and 8XYE: Shift
-    */
+   
 }
