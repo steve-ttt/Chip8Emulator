@@ -63,9 +63,10 @@ public class ArithmiticTest {
     })
     public void testSetVnRegister(int vx, int value, int vy) { 
         // The instruction 8XY0: Set VX to the value of VY.
-
+        int opcode = 0x80 << 8;
+        opcode = opcode + (vx << 8) + (vy << 4) ;
         chipVM.setV(vy, value); 
-        chipVM.execute8XY0(vx, vy); 
+        chipVM.execute8XY0(opcode); 
         assertEquals(value, chipVM.getV(vx), 
             "Value " + value + " should have moved from V" + vy + " to V" + vx);
     }

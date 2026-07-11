@@ -27,6 +27,8 @@ public class Chip8 {
     private ArrayDeque<Integer> stack = new ArrayDeque<>();  
     
     private final Map<Integer, Consumer<Integer>> dispatchTable = new HashMap<>();
+    private final Map<Integer, Consumer<Integer>> eightSeriesDispatchTable = new HashMap<>();
+    
 
     public Chip8() {
         
@@ -35,7 +37,7 @@ public class Chip8 {
         // set program counter to start of program space
         this.pc = 0x0200;
         setupDispatchTable(); // Initialize the "map"
-        
+        setupEightSeriesDispatchTable(); // Initialize the "map" for the 8-series
     }
 
      private void setupDispatchTable() {
@@ -52,6 +54,18 @@ public class Chip8 {
         // ... todo
     }
 
+    private void setupEightSeriesDispatchTable() {
+        eightSeriesDispatchTable.put(0x0, (opcode) -> execute8XY0(opcode));
+        /* eightSeriesDispatchTable.put(0x1, (opcode) -> execute8XY1(opcode));
+        eightSeriesDispatchTable.put(0x2, (opcode) -> execute8XY2(opcode));
+        eightSeriesDispatchTable.put(0x3, (opcode) -> execute8XY3(opcode));
+        eightSeriesDispatchTable.put(0x4, (opcode) -> execute8XY4(opcode));
+        eightSeriesDispatchTable.put(0x5, (opcode) -> execute8XY5(opcode));
+        eightSeriesDispatchTable.put(0x6, (opcode) -> execute8XY6(opcode));
+        eightSeriesDispatchTable.put(0x7, (opcode) -> execute8XY7(opcode));
+        eightSeriesDispatchTable.put(0xE, (opcode) -> execute8XYE(opcode)); */
+    }
+
     // --- 3. THE PUBLIC API (The Entry Point) ---
     public void execute(int opcode) {
         int family = (opcode & 0xF000) >> 12;
@@ -63,8 +77,11 @@ public class Chip8 {
     
     // This is the "Middle-man" for the 8-series
     private void handleEightSeries(int opcode) {
-        int subType = (opcode & 0x00F0) >> 4;
-        // Switch logic here...
+        int subType = opcode & 0x000F;
+        Consumer<Integer> action = eightSeriesDispatchTable.get(subType);
+        if (action != null) {
+            action.accept(opcode);
+        }
     }
 
     private void handleZeroSeries(int opcode) {
@@ -231,7 +248,9 @@ public class Chip8 {
         this.setV(vx, result);
     }
 
-    public void execute8XY0(int vx, int vy) {
+    public void execute8XY0(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int value = this.getV(vy);
         this.setV(vx, value);
     }

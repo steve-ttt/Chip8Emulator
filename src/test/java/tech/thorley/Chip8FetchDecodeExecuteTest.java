@@ -151,4 +151,16 @@ public class Chip8FetchDecodeExecuteTest {
             }
         }
     }
+
+    @Test
+    public void fetchDecode_8XY0_StoreValueVyinVx() {
+        //8XY0 	Store the value of register VY in register VX
+        loadInstructionAt(0x200, 0x80, 0x10);
+        chip8.setV(1, 0xAA);
+        chip8.setV(0, 0x00); // just to be sure 
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0xAA, chip8.getV(0));
+     
+    }
 }
