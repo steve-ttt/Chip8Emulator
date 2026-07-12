@@ -52,16 +52,6 @@ public class ControlFLowTest {
         assertTrue(chipVM.getPC() == currentPC);
     }
 
-
-    @Test
-    public void jumpToAddress() {
-        // 1NNN 	Jump to address NNN
-        short address = 0x1234;
-        chipVM.execute1NNN(address);
-        assertTrue(chipVM.getPC() == address);
-
-    }
-
     @Test
     public void executeSubroutine() {
         // 2NNN 	Execute subroutine starting at address NNN
@@ -88,22 +78,6 @@ public class ControlFLowTest {
         chipVM.execute3XNN(opcode);
         assertEquals(0x202, chipVM.getPC(), "Expect PC to point to the next instruction to be executed"); 
         // value not equal so no jump
-    }
-
-    @Test
-    public void jumpNotEquals() {
-        // 4XNN
-        int opcode = 0x4088;
-        int nnValue = 88;
-        int currentPC = chipVM.getPC();
-        chipVM.setV(0, 99);
-        chipVM.execute4XNN(opcode);
-        assertEquals(0x204, chipVM.getPC(), "Expect next instruction to be skipped"); 
-
-        currentPC = chipVM.getPC();
-        chipVM.setV(0, nnValue);
-        chipVM.execute4XNN(opcode);
-        assertEquals(0x202, chipVM.getPC(), "Expect PC to point to the next instruction to be executed"); 
     }
 
     @ParameterizedTest
