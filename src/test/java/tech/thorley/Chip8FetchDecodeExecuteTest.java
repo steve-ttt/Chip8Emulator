@@ -1,5 +1,7 @@
 package tech.thorley;
 
+import java.lang.reflect.Field;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,6 +24,16 @@ public class Chip8FetchDecodeExecuteTest {
     private void loadInstructionAt(int address, int highByte, int lowByte) {
         chip8.setMemory(address, highByte);
         chip8.setMemory(address + 1, lowByte);
+    }
+
+    private void setIndexRegister(int value) {
+        try {
+            Field field = Chip8.class.getDeclaredField("indexRegister");
+            field.setAccessible(true);
+            field.setInt(chip8, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -151,6 +163,8 @@ public class Chip8FetchDecodeExecuteTest {
             }
         }
     }
+
+    
 
     @Test
     public void fetchDecode_8XY0_StoreValueVyinVx() {
@@ -287,7 +301,19 @@ public class Chip8FetchDecodeExecuteTest {
 
     }
 
+    @Test
+    public void fetchDecode_DXYN_drawSprite() {
+        loadInstructionAt(0x200, 0xD0, 0x11);
+        chip8.setV(0, 0x00);
+        chip8.setV(1, 0x00);
+        setIndexRegister(0x300);
+        chip8.setMemory(0x300, 0x80);
 
+        chip8.fetchDecodeExecute();
+
+        assertTrue(chip8.getDisplayBit(0, 0));
+        assertFalse(chip8.getDisplayBit(1, 0));
+    }
 
 
 

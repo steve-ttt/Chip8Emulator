@@ -1,6 +1,9 @@
 package tech.thorley;
 
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque; // prefered over java.util.stack
 import java.util.HashMap;
 import java.util.Map;
@@ -50,7 +53,8 @@ public class Chip8 {
         dispatchTable.put(0x5, (opcode) -> execute5XY0(opcode));
         dispatchTable.put(0x6, (opcode) -> execute6XNN(opcode));
         dispatchTable.put(0x7, (opcode) -> execute7XNN(opcode));
-        dispatchTable.put(0x8, (opcode) -> handleEightSeries(opcode)); 
+        dispatchTable.put(0x8, (opcode) -> handleEightSeries(opcode));
+        dispatchTable.put(0xD, (opcode) -> executeDXYN(opcode));
         // ... todo
     }
 
@@ -120,6 +124,13 @@ public class Chip8 {
     }
     public void setMemory(int address,int value) {
         this.memory[address] = value;
+    }
+
+    public void loadRom(Path romPath) throws IOException {
+        byte[] romBytes = Files.readAllBytes(romPath);
+        for (int i = 0; i < romBytes.length; i++) {
+            this.setMemory(0x200 + i, romBytes[i] & 0xFF);
+        }
     }
     
     public int getPC() {return pc; }
@@ -369,6 +380,31 @@ public class Chip8 {
             this.incrementPC();
         }
 
+    }
+
+    public void executeDXYN(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
+        int n = opcode & 0x000F;
+
+        int x = this.getV(vx) % 64;
+        int y = this.getV(vy) % 32;
+        this.setV(0xF, 0);
+
+        for (int row = 0; row < n; row++) {
+            int spriteByte = this.memory[this.indexRegister + row] & 0xFF;
+            for (int bit = 0; bit < 8; bit++) {
+                if ((spriteByte & (0x80 >> bit)) != 0) {
+                    int screenX = (x + bit) % 64;
+                    int screenY = (y + row) % 32;
+                    boolean current = this.display[screenX][screenY];
+                    if (current) {
+                        this.setV(0xF, 1);
+                    }
+                    this.display[screenX][screenY] = current ^ true;
+                }
+            }
+        }
     }
 
 }
