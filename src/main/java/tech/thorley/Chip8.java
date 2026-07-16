@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayDeque; // prefered over java.util.stack
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.function.Consumer;
 
 
@@ -24,26 +25,55 @@ public class Chip8 {
     // 8-bit array for raw storage
     private int[] memory = new int[4096];
     private boolean[][] display = new boolean[64][32]; // chip-8 has a display buffer unlike ZX Spectrum or Gameboy that just uses main memory
-    
+    private boolean[] keypad = new boolean[16];
     
     // Modern stack
     private ArrayDeque<Integer> stack = new ArrayDeque<>();  
     
     private final Map<Integer, Consumer<Integer>> dispatchTable = new HashMap<>();
     private final Map<Integer, Consumer<Integer>> eightSeriesDispatchTable = new HashMap<>();
+    private final Map<Integer, Consumer<Integer>> fseriesDispatchTable = new HashMap<>();
+
+    private final Random random = new Random();
     
 
     public Chip8() {
         
-        // load font into memory
+        loadFontSet();
 
         // set program counter to start of program space
         this.pc = 0x0200;
         setupDispatchTable(); // Initialize the "map"
         setupEightSeriesDispatchTable(); // Initialize the "map" for the 8-series
+        setupFseriesDispatchTable(); // Initialize the "map" for the F-series
     }
 
-     private void setupDispatchTable() {
+    private void loadFontSet() {
+        int[] fontset = {
+            0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+            0x20, 0x60, 0x20, 0x20, 0x70, // 1
+            0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+            0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+            0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+            0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+            0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+            0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+            0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+            0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+            0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+            0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+            0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+            0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+            0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+            0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+        };
+
+        for (int i = 0; i < fontset.length; i++) {
+            this.memory[0x050 + i] = fontset[i] & 0xFF;
+        }
+    }
+
+    private void setupDispatchTable() {
         // The table points to methods within THIS class
         dispatchTable.put(0x0, (opcode) -> handleZeroSeries(opcode));
         dispatchTable.put(0x1, (opcode) -> execute1NNN(opcode));
@@ -54,7 +84,12 @@ public class Chip8 {
         dispatchTable.put(0x6, (opcode) -> execute6XNN(opcode));
         dispatchTable.put(0x7, (opcode) -> execute7XNN(opcode));
         dispatchTable.put(0x8, (opcode) -> handleEightSeries(opcode));
+        dispatchTable.put(0xA, (opcode) -> executeANNN(opcode));
+        dispatchTable.put(0xB, (opcode) -> executeBNNN(opcode));
+        dispatchTable.put(0xC, (opcode) -> executeCXNN(opcode));
         dispatchTable.put(0xD, (opcode) -> executeDXYN(opcode));
+        dispatchTable.put(0xE, (opcode) -> handleESeries(opcode));
+        dispatchTable.put(0xF, (opcode) -> handleFSeries(opcode));
         // ... todo
     }
 
@@ -68,6 +103,18 @@ public class Chip8 {
         eightSeriesDispatchTable.put(0x6, (opcode) -> execute8XY6(opcode));
         eightSeriesDispatchTable.put(0x7, (opcode) -> execute8XY7(opcode));
         eightSeriesDispatchTable.put(0xE, (opcode) -> execute8XYE(opcode)); 
+    }
+
+    private void setupFseriesDispatchTable() {
+        fseriesDispatchTable.put(0x07, (opcode) -> executeFX07(opcode));
+        fseriesDispatchTable.put(0x0A, (opcode) -> executeFX0A(opcode));
+        fseriesDispatchTable.put(0x15, (opcode) -> executeFX15(opcode));
+        fseriesDispatchTable.put(0x18, (opcode) -> executeFX18(opcode));
+        fseriesDispatchTable.put(0x1E, (opcode) -> executeFX1E(opcode));
+        fseriesDispatchTable.put(0x29, (opcode) -> executeFX29(opcode));
+        fseriesDispatchTable.put(0x33, (opcode) -> executeFX33(opcode));
+        fseriesDispatchTable.put(0x55, (opcode) -> executeFX55(opcode));
+        fseriesDispatchTable.put(0x65, (opcode) -> executeFX65(opcode));
     }
 
     // --- 3. THE PUBLIC API (The Entry Point) ---
@@ -100,6 +147,28 @@ public class Chip8 {
             default:
                 execute0NNN(opcode);
                 break;
+        }
+    }
+
+    private void handleESeries(int opcode) {
+        int subType = opcode & 0x00FF;
+        switch (subType) {
+            case 0x9E:
+                executeEX9E(opcode);
+                break;
+            case 0xA1:
+                executeEXA1(opcode);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void handleFSeries(int opcode) {
+        int subType = opcode & 0x00FF;
+        Consumer<Integer> action = fseriesDispatchTable.get(subType);
+        if (action != null) {
+            action.accept(opcode);
         }
     }
 
@@ -372,6 +441,45 @@ public class Chip8 {
 
     }
 
+    public void executeANNN(int opcode) {
+        int address = opcode & 0x0FFF;
+        this.indexRegister = address;
+    }
+
+    public void executeBNNN(int opcode) {
+        int address = opcode & 0x0FFF;
+        this.pc = address + this.getV(0);
+    }
+
+    public void executeCXNN(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int nn = opcode & 0x00FF;
+        int randomValue = this.random.nextInt(256) & nn;
+        this.setV(vx, randomValue);
+    }
+
+    public void executeEX9E(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int key = this.getV(vx);
+        if (this.keypad[key]) {
+            this.incrementPC();
+            this.incrementPC();
+        } else {
+            this.incrementPC();
+        }
+    }
+
+    public void executeEXA1(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int key = this.getV(vx);
+        if (!this.keypad[key]) {
+            this.incrementPC();
+            this.incrementPC();
+        } else {
+            this.incrementPC();
+        }
+    }
+
     public void execute9XY0(int vx, int vy) {
         // 9XY0 	Skip the following instruction if the value of register VX is NOT equal to the value of register VY
         int xValue = this.getV(vx);
@@ -405,6 +513,69 @@ public class Chip8 {
                 }
             }
         }
+    }
+
+    public void executeFX07(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        this.setV(vx, this.delayTimer);
+    }
+
+    public void executeFX0A(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        for (int i = 0; i < this.keypad.length; i++) {
+            if (this.keypad[i]) {
+                this.setV(vx, i);
+                return;
+            }
+        }
+    }
+
+    public void executeFX15(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        this.delayTimer = this.getV(vx);
+    }
+
+    public void executeFX18(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        this.soundTimer = this.getV(vx);
+    }
+
+    public void executeFX1E(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        this.indexRegister += this.getV(vx);
+    }
+
+    public void executeFX29(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int digit = this.getV(vx);
+        this.indexRegister = digit * 5;
+    }
+
+    public void executeFX33(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        int value = this.getV(vx);
+        int hundreds = value / 100;
+        int tens = (value / 10) % 10;
+        int ones = value % 10;
+        this.memory[this.indexRegister] = hundreds;
+        this.memory[this.indexRegister + 1] = tens;
+        this.memory[this.indexRegister + 2] = ones;
+    }
+
+    public void executeFX55(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        for (int i = 0; i <= vx; i++) {
+            this.memory[this.indexRegister + i] = this.getV(i);
+        }
+        this.indexRegister += vx + 1;
+    }
+
+    public void executeFX65(int opcode) {
+        int vx = (opcode & 0x0F00) >> 8;
+        for (int i = 0; i <= vx; i++) {
+            this.setV(i, this.memory[this.indexRegister + i]);
+        }
+        this.indexRegister += vx + 1;
     }
 
 }

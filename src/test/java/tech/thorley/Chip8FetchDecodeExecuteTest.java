@@ -36,6 +36,47 @@ public class Chip8FetchDecodeExecuteTest {
         }
     }
 
+    private int getIndexRegister() {
+        try {
+            Field field = Chip8.class.getDeclaredField("indexRegister");
+            field.setAccessible(true);
+            return field.getInt(chip8);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void setKeyState(int key, boolean pressed) {
+        try {
+            Field field = Chip8.class.getDeclaredField("keypad");
+            field.setAccessible(true);
+            boolean[] keypad = (boolean[]) field.get(chip8);
+            keypad[key] = pressed;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private int getDelayTimer() {
+        try {
+            Field field = Chip8.class.getDeclaredField("delayTimer");
+            field.setAccessible(true);
+            return field.getInt(chip8);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private int getSoundTimer() {
+        try {
+            Field field = Chip8.class.getDeclaredField("soundTimer");
+            field.setAccessible(true);
+            return field.getInt(chip8);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     public void testExecute_1NNN_Jump() {
         loadInstructionAt((short) 0x200, (byte) 0x12, (byte) 0x34);
@@ -301,6 +342,40 @@ public class Chip8FetchDecodeExecuteTest {
 
     }
 
+    
+    @Test
+    public void fetchDecode_ANNN() {
+        // ANNN 	Store memory address NNN in register I
+        loadInstructionAt(0x200, 0xA1, 0x23);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x123, getIndexRegister());
+    }
+
+    @Test
+    public void fetchDecode_BNNN() {
+        //BNNN 	Jump to address NNN + V0
+        loadInstructionAt(0x200, 0xB1, 0x23);
+        chip8.setV(0, 0x05);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x128, chip8.getPC());
+    }
+
+    @Test
+    public void fetchDecode_CXNN() {
+        //CXNN 	Set VX to a random number with a mask of NN
+        loadInstructionAt(0x200, 0xC1, 0x0F);
+        chip8.setV(1, 0x55);
+
+        chip8.fetchDecodeExecute();
+
+        assertTrue(chip8.getV(1) >= 0x00);
+        assertTrue(chip8.getV(1) <= 0x0F);
+    }
+    
     @Test
     public void fetchDecode_DXYN_drawSprite() {
         loadInstructionAt(0x200, 0xD0, 0x11);
@@ -315,6 +390,149 @@ public class Chip8FetchDecodeExecuteTest {
         assertFalse(chip8.getDisplayBit(1, 0));
     }
 
+    @Test
+    public void fetchDecode_EX9E_skipIfKeyPressed() {
+        // EX9E 	Skip the following instruction if the key corresponding to the hex value currently stored in register VX is pressed
+        loadInstructionAt(0x200, 0xE0, 0x9E);
+        chip8.setV(0, 0x0A);
+        setKeyState(0x0A, true);
 
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x204, chip8.getPC());
+    }
+
+    @Test
+    public void fetchDecode_EXA1_skipIfKeyNotPressed() {
+        // EXA1 	Skip the following instruction if the key corresponding to the hex value currently stored in register VX is not pressed
+        loadInstructionAt(0x200, 0xE0, 0xA1);
+        chip8.setV(0, 0x0A);
+        setKeyState(0x0A, false);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x204, chip8.getPC());
+    }
+
+    @Test
+    public void fetchDecode_FX07_storeDelayTimer() {
+        // FX07 	Store the current value of the delay timer in register VX
+        loadInstructionAt(0x200, 0xF0, 0x07);
+        try {
+            Field field = Chip8.class.getDeclaredField("delayTimer");
+            field.setAccessible(true);
+            field.setInt(chip8, 0x3C);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x3C, chip8.getV(0));
+    }
+
+    @Test
+    public void fetchDecode_FX0A_waitForKeyPress() {
+        // FX0A 	Wait for a keypress and store the result in register VX
+        loadInstructionAt(0x200, 0xF0, 0x0A);
+        setKeyState(0x0A, true);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x0A, chip8.getV(0));
+    }
+
+    @Test
+    public void fetchDecode_FX15_setDelayTimer() {
+        // FX15 	Set the delay timer to the value of register VX
+        loadInstructionAt(0x200, 0xF0, 0x15);
+        chip8.setV(0, 0x2A);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x2A, getDelayTimer());
+    }
+
+    @Test
+    public void fetchDecode_FX18_setSoundTimer() {
+        // FX18 	Set the sound timer to the value of register VX
+        loadInstructionAt(0x200, 0xF0, 0x18);
+        chip8.setV(0, 0x1E);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x1E, getSoundTimer());
+    }
+
+    @Test
+    public void fetchDecode_FX1E_addToIndexRegister() {
+        // FX1E 	Add the value stored in register VX to register I
+        loadInstructionAt(0x200, 0xF0, 0x1E);
+        chip8.setV(0, 0x05);
+        setIndexRegister(0x100);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x105, getIndexRegister());
+    }
+
+    @Test
+    public void fetchDecode_FX29_setIndexRegisterToFontAddress() {
+        // FX29 	Set I to the memory address of the sprite data corresponding to the hexadecimal digit stored in register VX
+        loadInstructionAt(0x200, 0xF0, 0x29);
+        chip8.setV(0, 0x0A);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x32, getIndexRegister());
+    }
+
+    @Test
+    public void fetchDecode_FX33_storeBCD() {
+        // FX33 	Store the BCD equivalent of the value stored in register VX at addresses I, I + 1, and I + 2
+        loadInstructionAt(0x200, 0xF0, 0x33);
+        chip8.setV(0, 0x7B);
+        setIndexRegister(0x300);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x01, chip8.getMemory()[0x300]);
+        assertEquals(0x02, chip8.getMemory()[0x301]);
+        assertEquals(0x03, chip8.getMemory()[0x302]);
+    }
+
+    @Test
+    public void fetchDecode_FX55_storeRegistersToMemory() {
+        // FX55 	Store the values of registers V0 to VX inclusive in memory starting at address I
+        loadInstructionAt(0x200, 0xF2, 0x55);
+        chip8.setV(0, 0x01);
+        chip8.setV(1, 0x02);
+        chip8.setV(2, 0x03);
+        setIndexRegister(0x300);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x01, chip8.getMemory()[0x300]);
+        assertEquals(0x02, chip8.getMemory()[0x301]);
+        assertEquals(0x03, chip8.getMemory()[0x302]);
+        assertEquals(0x303, getIndexRegister());
+    }
+
+    @Test
+    public void fetchDecode_FX65_loadRegistersFromMemory() {
+        // FX65 	Fill registers V0 to VX inclusive with the values stored in memory starting at address I
+        loadInstructionAt(0x200, 0xF2, 0x65);
+        chip8.setMemory(0x300, 0x01);
+        chip8.setMemory(0x301, 0x02);
+        chip8.setMemory(0x302, 0x03);
+        setIndexRegister(0x300);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x01, chip8.getV(0));
+        assertEquals(0x02, chip8.getV(1));
+        assertEquals(0x03, chip8.getV(2));
+        assertEquals(0x303, getIndexRegister());
+    }
 
 }
