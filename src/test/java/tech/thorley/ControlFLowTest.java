@@ -82,15 +82,16 @@ public class ControlFLowTest {
 
     @ParameterizedTest
     @CsvSource({
-        "0, 0, 1, 128, 512, 514",   // Test Reg 0 = 0 reg 1 = 128 pc = 512(0x200) 
-        "4, 255, 5, 255, 512, 512"  // Test Reg 4 = 255 reg 5 = 255 pc = 512(0x200)
+        "0, 0, 1, 128, 512, 516",   // Not equal: PC increments by 2 (for instruction) + 2 (for skip) = 4. 512 -> 516
+        "4, 255, 5, 255, 512, 514"  // Equal: PC increments by 2 (for instruction). 512 -> 514
     })
     public void jumpNotEqualsRegister(int vx, int xValue, int vy, int yValue, short pc, int expectedPC) {
+        int opcode = 0x9000 | (vx << 8) | (vy << 4);
         // 9XY0 	Skip the following instruction if the value of register VX is NOT equal to the value of register VY
         chipVM.setPC(pc);
         chipVM.setV(vx, xValue);
         chipVM.setV(vy, yValue);
-        chipVM.execute9XY0(vx, vy);
+        chipVM.execute9XY0(opcode);
         assertTrue(chipVM.getPC() == expectedPC);
 
     }
@@ -109,8 +110,8 @@ public class ControlFLowTest {
 
     @ParameterizedTest
     @CsvSource({
-        "0, 10, 4, 10, 512, 516",   // Test Reg 0 = 10 reg 1 = 10 pc = 512(0x200) 
-        "0, 126, 4, 85, 512, 514"  // Test Reg 4 = 126 reg 5 = 85 pc = 512(0x200)
+        "0, 10, 4, 10, 512, 516",   // Equal: PC increments by 2 (for instruction) + 2 (for skip) = 4. 512 -> 516
+        "0, 126, 4, 85, 512, 514"  // Not equal: PC increments by 2 (for instruction). 512 -> 514
     })
     public void jumpEqualsRegister(int vx, int xValue, int vy, int yValue, short pc, int expectedPC) {
         // 5XY0 	Skip the following instruction if the value of register VX is  equal to the value of register VY

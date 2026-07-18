@@ -13,6 +13,11 @@ import java.util.function.Consumer;
 
 public class Chip8 {
 
+    public interface AudioOutput {
+        void start();
+        void stop();
+    }
+
     // 32-bit types for clean math and logic. beacuse java doesn't have unsigned int like uint_8 of C or C++.
     private int[] registers = new int[16]; 
     private int delayTimer;   
@@ -26,6 +31,7 @@ public class Chip8 {
     private int[] memory = new int[4096];
     private boolean[][] display = new boolean[64][32]; // chip-8 has a display buffer unlike ZX Spectrum or Gameboy that just uses main memory
     private boolean[] keypad = new boolean[16];
+    private AudioOutput audioOutput;
     
     // Modern stack
     private ArrayDeque<Integer> stack = new ArrayDeque<>();  
@@ -38,7 +44,11 @@ public class Chip8 {
     
 
     public Chip8() {
-        
+        this(new NoopAudioOutput());
+    }
+
+    public Chip8(AudioOutput audioOutput) {
+        this.audioOutput = audioOutput;
         loadFontSet();
 
         // set program counter to start of program space
@@ -85,6 +95,7 @@ public class Chip8 {
         dispatchTable.put(0x7, (opcode) -> execute7XNN(opcode));
         dispatchTable.put(0x8, (opcode) -> handleEightSeries(opcode));
         dispatchTable.put(0xA, (opcode) -> executeANNN(opcode));
+        dispatchTable.put(0x9, (opcode) -> execute9XY0(opcode));
         dispatchTable.put(0xB, (opcode) -> executeBNNN(opcode));
         dispatchTable.put(0xC, (opcode) -> executeCXNN(opcode));
         dispatchTable.put(0xD, (opcode) -> executeDXYN(opcode));
@@ -240,11 +251,56 @@ public class Chip8 {
         return display[x][y];
     }
 
+    public boolean[][] getDisplay() {
+        return display;
+    }
+
+    public void setKeyState(int keyIndex, boolean pressed) {
+        if (keyIndex < 0 || keyIndex >= keypad.length) {
+            throw new IllegalArgumentException("Key index out of bounds: " + keyIndex);
+        }
+        keypad[keyIndex] = pressed;
+    }
+
+    public boolean isKeyPressed(int keyIndex) {
+        if (keyIndex < 0 || keyIndex >= keypad.length) {
+            throw new IllegalArgumentException("Key index out of bounds: " + keyIndex);
+        }
+        return keypad[keyIndex];
+    }
+
+    public void setSoundTimer(int value) {
+        this.soundTimer = value & 0xFF;
+    }
+
+    public int getSoundTimer() {
+        return soundTimer;
+    }
+
+    public void setAudioOutput(AudioOutput audioOutput) {
+        this.audioOutput = audioOutput;
+    }
+
     public void clearDisplay() {
         for (boolean[] display1 : display) {
             for (int j = 0; j < display1.length; j++) {
                 display1[j] = false;
             }
+        }
+    }
+
+    public void updateTimers() {
+        if (delayTimer > 0) {
+            delayTimer--;
+        }
+        if (soundTimer > 0) {
+            soundTimer--;
+        }
+
+        if (soundTimer > 0) {
+            audioOutput.start();
+        } else {
+            audioOutput.stop();
         }
     }
     
@@ -261,6 +317,7 @@ public class Chip8 {
 
     public void execute00E0() {
         this.clearDisplay();
+        this.incrementPC();
     }
 
     public void execute00EE() {
@@ -283,10 +340,8 @@ public class Chip8 {
         int vx = (opcode & 0x0F00) >> 8;
         int nn = opcode & 0x00FF;
         int xValue = this.getV(vx);
+        this.incrementPC();
         if (xValue == nn) {
-            this.incrementPC();
-            this.incrementPC();
-        } else {
             this.incrementPC();
         }
     }
@@ -295,11 +350,9 @@ public class Chip8 {
         int vx = (opcode & 0x0F00) >> 8;
         int nn = opcode & 0x00FF;   
         int xValue = this.getV(vx);
+        this.incrementPC();
         if (xValue != nn) {
             this.incrementPC();
-            this.incrementPC();
-        } else {
-            this.incrementPC();            
         }        
     }
 
@@ -309,10 +362,8 @@ public class Chip8 {
         int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
+        this.incrementPC();
         if (xValue == yValue) {
-            this.incrementPC();
-            this.incrementPC();
-        } else {
             this.incrementPC();
         }
     }
@@ -321,6 +372,7 @@ public class Chip8 {
         int vx = (opcode & 0x0F00) >> 8;
         int nn = opcode & 0x00FF;
         this.setV(vx, nn);
+        this.incrementPC();
     }
 
     public void execute7XNN(int opcode) {
@@ -330,6 +382,7 @@ public class Chip8 {
         int result = xValue + nn;
         result = result & 0xFF;
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XY0(int opcode) {
@@ -337,6 +390,7 @@ public class Chip8 {
         int vy = (opcode & 0x00F0) >> 4;
         int value = this.getV(vy);
         this.setV(vx, value);
+        this.incrementPC();
     }
 
     public void execute8XY1(int opcode) {
@@ -346,6 +400,7 @@ public class Chip8 {
         int yValue = this.getV(vy);
         int result = (xValue | yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XY2(int opcode) {
@@ -355,6 +410,7 @@ public class Chip8 {
         int yValue = this.getV(vy);
         int result = (xValue & yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XY3(int opcode) {
@@ -364,6 +420,7 @@ public class Chip8 {
         int yValue = this.getV(vy);
         int result = (xValue ^ yValue) & 0xFF; // mask the value so it doesn't exceed 8 bits (255).
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XY4(int opcode) {
@@ -379,6 +436,7 @@ public class Chip8 {
         }
         result = result & 0xFF;
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XY5(int opcode) {
@@ -395,6 +453,7 @@ public class Chip8 {
         result = result & 0xFF;
         this.setV(0xF, borrow); // set borrow
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XY6(int opcode) {
@@ -406,6 +465,7 @@ public class Chip8 {
         result = result & 0xFF;
         this.setV(0xF, carry); // set carry
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XY7(int opcode) {
@@ -422,6 +482,7 @@ public class Chip8 {
         result = result & 0xFF;
         this.setV(0xF, borrow); // set borrow
         this.setV(vx, result);
+        this.incrementPC();
     }
 
     public void execute8XYE(int opcode) {
@@ -438,12 +499,14 @@ public class Chip8 {
         result = result & 0xFF;
         this.setV(0xF, carry); // set carry
         this.setV(vx, result);
+        this.incrementPC();
 
     }
 
     public void executeANNN(int opcode) {
         int address = opcode & 0x0FFF;
         this.indexRegister = address;
+        this.incrementPC();
     }
 
     public void executeBNNN(int opcode) {
@@ -456,15 +519,14 @@ public class Chip8 {
         int nn = opcode & 0x00FF;
         int randomValue = this.random.nextInt(256) & nn;
         this.setV(vx, randomValue);
+        this.incrementPC();
     }
 
     public void executeEX9E(int opcode) {
         int vx = (opcode & 0x0F00) >> 8;
         int key = this.getV(vx);
+        this.incrementPC();
         if (this.keypad[key]) {
-            this.incrementPC();
-            this.incrementPC();
-        } else {
             this.incrementPC();
         }
     }
@@ -472,18 +534,19 @@ public class Chip8 {
     public void executeEXA1(int opcode) {
         int vx = (opcode & 0x0F00) >> 8;
         int key = this.getV(vx);
+        this.incrementPC();
         if (!this.keypad[key]) {
-            this.incrementPC();
-            this.incrementPC();
-        } else {
             this.incrementPC();
         }
     }
 
-    public void execute9XY0(int vx, int vy) {
+    public void execute9XY0(int opcode) {
         // 9XY0 	Skip the following instruction if the value of register VX is NOT equal to the value of register VY
+        int vx = (opcode & 0x0F00) >> 8;
+        int vy = (opcode & 0x00F0) >> 4;
         int xValue = this.getV(vx);
         int yValue = this.getV(vy);
+        this.incrementPC();
         if (xValue != yValue) {
             this.incrementPC();
         }
@@ -513,11 +576,13 @@ public class Chip8 {
                 }
             }
         }
+        this.incrementPC();
     }
 
     public void executeFX07(int opcode) {
         int vx = (opcode & 0x0F00) >> 8;
         this.setV(vx, this.delayTimer);
+        this.incrementPC();
     }
 
     public void executeFX0A(int opcode) {
@@ -525,30 +590,47 @@ public class Chip8 {
         for (int i = 0; i < this.keypad.length; i++) {
             if (this.keypad[i]) {
                 this.setV(vx, i);
+                this.incrementPC();
                 return;
             }
         }
+        // If no key is pressed, we do NOT increment the PC.
+        // This effectively halts execution until a key is pressed.
     }
 
     public void executeFX15(int opcode) {
         int vx = (opcode & 0x0F00) >> 8;
         this.delayTimer = this.getV(vx);
+        this.incrementPC();
     }
 
     public void executeFX18(int opcode) {
         int vx = (opcode & 0x0F00) >> 8;
         this.soundTimer = this.getV(vx);
+        this.incrementPC();
+    }
+
+    private static final class NoopAudioOutput implements AudioOutput {
+        @Override
+        public void start() {
+        }
+
+        @Override
+        public void stop() {
+        }
     }
 
     public void executeFX1E(int opcode) {
         int vx = (opcode & 0x0F00) >> 8;
         this.indexRegister += this.getV(vx);
+        this.incrementPC();
     }
 
     public void executeFX29(int opcode) {
         int vx = (opcode & 0x0F00) >> 8;
         int digit = this.getV(vx);
-        this.indexRegister = digit * 5;
+        this.indexRegister = 0x050 + (digit * 5);
+        this.incrementPC();
     }
 
     public void executeFX33(int opcode) {
@@ -560,6 +642,7 @@ public class Chip8 {
         this.memory[this.indexRegister] = hundreds;
         this.memory[this.indexRegister + 1] = tens;
         this.memory[this.indexRegister + 2] = ones;
+        this.incrementPC();
     }
 
     public void executeFX55(int opcode) {
@@ -568,6 +651,7 @@ public class Chip8 {
             this.memory[this.indexRegister + i] = this.getV(i);
         }
         this.indexRegister += vx + 1;
+        this.incrementPC();
     }
 
     public void executeFX65(int opcode) {
@@ -576,7 +660,7 @@ public class Chip8 {
             this.setV(i, this.memory[this.indexRegister + i]);
         }
         this.indexRegister += vx + 1;
+        this.incrementPC();
     }
 
 }
-

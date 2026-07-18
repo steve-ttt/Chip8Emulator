@@ -57,6 +57,28 @@ public class Chip8FetchDecodeExecuteTest {
         }
     }
 
+    private void setDelayTimer(int value) {
+        try {
+            Field field = Chip8.class.getDeclaredField("delayTimer");
+            field.setAccessible(true);
+            field.setInt(chip8, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void setSoundTimer(int value) {
+        try {
+            Field field = Chip8.class.getDeclaredField("soundTimer");
+            field.setAccessible(true);
+            field.setInt(chip8, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+
     private int getDelayTimer() {
         try {
             Field field = Chip8.class.getDeclaredField("delayTimer");
@@ -205,7 +227,14 @@ public class Chip8FetchDecodeExecuteTest {
         }
     }
 
-    
+    @Test
+    public void clearScreen_00E0_advancesProgramCounter() {
+        loadInstructionAt(0x200, 0x00, 0xE0);
+
+        chip8.fetchDecodeExecute();
+
+        assertEquals(0x202, chip8.getPC());
+    }
 
     @Test
     public void fetchDecode_8XY0_StoreValueVyinVx() {
@@ -484,7 +513,7 @@ public class Chip8FetchDecodeExecuteTest {
 
         chip8.fetchDecodeExecute();
 
-        assertEquals(0x32, getIndexRegister());
+        assertEquals(0x82, getIndexRegister());
     }
 
     @Test
@@ -535,4 +564,36 @@ public class Chip8FetchDecodeExecuteTest {
         assertEquals(0x303, getIndexRegister());
     }
 
+    @Test
+    public void testUpdateTimers_decrementsWhenPositive() {
+        setDelayTimer(10);
+        setSoundTimer(5);
+
+        chip8.updateTimers();
+
+        assertEquals(9, getDelayTimer(), "Delay timer should decrement by 1");
+        assertEquals(4, getSoundTimer(), "Sound timer should decrement by 1");
+    }
+
+    @Test
+    public void testUpdateTimers_doesNotGoBelowZero() {
+        setDelayTimer(0);
+        setSoundTimer(0);
+
+        chip8.updateTimers();
+
+        assertEquals(0, getDelayTimer(), "Delay timer should not go below 0");
+        assertEquals(0, getSoundTimer(), "Sound timer should not go below 0");
+    }
+
+    @Test
+    public void testUpdateTimers_stopsAtZero() {
+        setDelayTimer(1);
+        setSoundTimer(1);
+
+        chip8.updateTimers();
+
+        assertEquals(0, getDelayTimer(), "Delay timer should stop at 0");
+        assertEquals(0, getSoundTimer(), "Sound timer should stop at 0");
+    }
 }
